@@ -3,7 +3,7 @@
 // written under a temporary name and renamed into place, so a failure never leaves a partial file
 // and two runs produce identical bytes.
 
-import { mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -30,17 +30,15 @@ try {
     throw new Error(`refusing to write into ${outputDir}: it is the directory holding entry.png`);
   }
 
-  const { size } = statSync(sourcePath);
-  if (size > MAX_BYTES) {
-    throw new Error(`entry.png is ${size} bytes, over the ${MAX_BYTES}-byte limit`);
-  }
-
   const bytes = readFileSync(sourcePath);
-  if (bytes.length < 24) {
-    throw new Error(`entry.png is ${bytes.length} bytes, too short to hold a PNG signature and IHDR`);
+  if (bytes.length > MAX_BYTES) {
+    throw new Error(`entry.png is ${bytes.length} bytes, over the ${MAX_BYTES}-byte limit`);
   }
   if (!bytes.subarray(0, 8).equals(SIGNATURE)) {
     throw new Error(`entry.png starts with ${bytes.subarray(0, 8).toString('hex')}, not the PNG signature 89504e470d0a1a0a`);
+  }
+  if (bytes.length < 24) {
+    throw new Error(`entry.png is ${bytes.length} bytes, too short to hold an IHDR chunk`);
   }
   const chunkType = bytes.subarray(12, 16).toString('latin1');
   if (chunkType !== 'IHDR') {
